@@ -12,15 +12,15 @@ const (
 )
 
 type SmgpDeliverReqPkt struct {
-	MsgID      string       // 短消息流水号
-	IsReport   uint8        // 短消息流水号
-	MsgFormat  uint8        // 短消息格式
-	RecvTime   *OctetString // 短消息接收时间
-	SrcTermID  *OctetString // 短消息发送号码
-	DestTermID *OctetString // 短消息接收号码
-	MsgLength  uint8        //  短消息长度
-	MsgContent []byte       // 短消息内容
-	Reserve    *OctetString // 保留
+	MsgID      string // 短消息流水号
+	IsReport   uint8  // 短消息流水号
+	MsgFormat  uint8  // 短消息格式
+	RecvTime   string // 短消息接收时间
+	SrcTermID  string // 短消息发送号码
+	DestTermID string // 短消息接收号码
+	MsgLength  uint8  //  短消息长度
+	MsgContent string // 短消息内容
+	Reserve    string // 保留
 
 	// 可选字段
 	Options Options
@@ -40,17 +40,15 @@ func (p *SmgpDeliverReqPkt) Pack(seqId uint32) ([]byte, error) {
 	w.WriteFixedSizeString(p.MsgID, 10)
 	w.WriteByte(p.IsReport)
 	w.WriteByte(p.MsgFormat)
-	w.WriteBytes(p.RecvTime.Byte())
-	w.WriteBytes(p.SrcTermID.Byte())
-	w.WriteBytes(p.DestTermID.Byte())
+	w.WriteFixedSizeString(p.RecvTime, 14)
+	w.WriteFixedSizeString(p.SrcTermID, 21)
+	w.WriteFixedSizeString(p.DestTermID, 21)
 	w.WriteByte(p.MsgLength)
-	w.WriteByte(p.MsgFormat)
-	w.WriteBytes(p.MsgContent)
-	w.WriteBytes(p.Reserve.Byte())
+	w.WriteString(p.MsgContent)
+	w.WriteFixedSizeString(p.Reserve, 8)
 
-	for k, o := range p.Options {
-		w.WriteByte(uint8(k))
-		w.WriteBytes(o)
+	for _, o := range p.Options {
+		w.WriteBytes(o.Byte())
 	}
 
 	return w.Bytes()
@@ -63,26 +61,14 @@ func (p *SmgpDeliverReqPkt) Unpack(data []byte) error {
 	p.MsgID = hex.EncodeToString(r.ReadCString(10))
 	p.IsReport = r.ReadByte()
 	p.MsgFormat = r.ReadByte()
-	p.RecvTime = &OctetString{
-		Data:     r.ReadCString(14),
-		FixedLen: 14,
-	}
-	p.SrcTermID = &OctetString{
-		Data:     r.ReadCString(21),
-		FixedLen: 21,
-	}
-	p.DestTermID = &OctetString{
-		Data:     r.ReadCString(21),
-		FixedLen: 21,
-	}
+	p.RecvTime = string(r.ReadCString(14))
+	p.SrcTermID = string(r.ReadCString(21))
+	p.DestTermID = string(r.ReadCString(21))
 	p.MsgLength = r.ReadByte()
 	msgContent := make([]byte, p.MsgLength)
 	r.ReadBytes(msgContent)
-	p.MsgContent = msgContent
-	p.Reserve = &OctetString{
-		Data:     r.ReadCString(8),
-		FixedLen: 8,
-	}
+	p.MsgContent = string(msgContent[:])
+	p.Reserve = string(r.ReadCString(8))
 	offset += 10 + 1 + 1 + 14 + 21 + 21 + 1 + int(p.MsgLength) + 8
 
 	options, err := ParseOptions(data[offset:])

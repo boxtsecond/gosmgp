@@ -54,14 +54,14 @@ var TagName = map[Tag]string{
 }
 
 // 可选参数 map
-type Options map[Tag][]byte
+type Options map[Tag]*TLV
 
 // 返回可选字段部分的长度
 func (o Options) Len() int {
 	length := 0
 
 	for _, v := range o {
-		length += 2 + 2 + len(v)
+		length += 2 + 2 + int(v.Length)
 	}
 
 	return length
@@ -102,47 +102,8 @@ func ParseOptions(rawData []byte) (Options, error) {
 		value := rawData[p : p+int(vlen)]
 		p += int(vlen)
 
-		ops[Tag(tag)] = value
+		ops[Tag(tag)] = NewTLV(Tag(tag), value)
 	}
 
 	return ops, nil
-}
-
-func (o Options) TP_pid() uint8 {
-	return o[TAG_TP_pid][0]
-}
-
-func (o Options) TP_udhi() uint8 {
-	return o[TAG_TP_udhi][0]
-}
-
-func (o Options) LinkID() string {
-	p := &OctetString{Data: o[TAG_LinkID], FixedLen: 20}
-	return p.String()
-}
-
-func (o Options) ChargeUserType() uint8 {
-	return o[TAG_ChargeUserType][0]
-}
-
-func (o Options) ChargeTermType() uint8 {
-	return o[TAG_ChargeTermType][0]
-}
-
-func (o Options) ChargeTermPseudo() string {
-	value := o[TAG_ChargeTermPseudo]
-	p := &OctetString{Data: value, FixedLen: int(len(value))}
-	return p.String()
-}
-
-func (o Options) MsgSrc() string {
-	value := o[TAG_MsgSrc]
-	p := &OctetString{Data: value, FixedLen: 8}
-	return p.String()
-}
-
-func (o Options) MServiceID() string {
-	value := o[TAG_MServiceID]
-	p := &OctetString{Data: value, FixedLen: 21}
-	return p.String()
 }

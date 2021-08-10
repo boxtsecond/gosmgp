@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -96,7 +97,7 @@ const (
 )
 
 type readBuffer struct {
-	Header   *Header
+	Header
 	leftData [defaultReadBufferSize]byte
 }
 
@@ -159,6 +160,8 @@ func (c *Conn) RecvAndUnpackPkt(timeout time.Duration) (Packer, error) {
 
 	var p Packer
 	sequenceID := rb.Header.SequenceID
+	fmt.Println("===============")
+	fmt.Println(RequestID(rb.Header.RequestID))
 
 	switch RequestID(rb.Header.RequestID) {
 	case SMGP_ACTIVE_TEST:

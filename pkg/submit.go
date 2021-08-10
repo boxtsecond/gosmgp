@@ -12,23 +12,23 @@ const (
 )
 
 type SmgpSubmitReqPkt struct {
-	MsgType         uint8          // 短消息类型
-	NeedReport      uint8          // SP是否要求返回状态报告
-	Priority        uint8          // 短消息发送优先级
-	ServiceID       *OctetString   // 业务代码
-	FeeType         *OctetString   // 收费类型
-	FeeCode         *OctetString   // 资费代码
-	FixedFee        *OctetString   // 包月费/封顶费
-	MsgFormat       uint8          // 短消息格式
-	ValidTime       *OctetString   // 短消息有效时间
-	AtTime          *OctetString   // 短消息定时发送时间
-	SrcTermID       *OctetString   // 短信息发送方号码
-	ChargeTermID    *OctetString   // 计费用户号码
-	DestTermIDCount uint8          // 短消息接收号码总数，最多 100
-	DestTermID      []*OctetString // 短消息接收号码
-	MsgLength       uint8          // 短消息长度
-	MsgContent      []byte         // 短消息内容
-	Reserve         *OctetString   // 保留
+	MsgType         uint8    // 短消息类型
+	NeedReport      uint8    // SP是否要求返回状态报告
+	Priority        uint8    // 短消息发送优先级
+	ServiceID       string   // 业务代码
+	FeeType         string   // 收费类型
+	FeeCode         string   // 资费代码
+	FixedFee        string   // 包月费/封顶费
+	MsgFormat       uint8    // 短消息格式
+	ValidTime       string   // 短消息有效时间
+	AtTime          string   // 短消息定时发送时间
+	SrcTermID       string   // 短信息发送方号码
+	ChargeTermID    string   // 计费用户号码
+	DestTermIDCount uint8    // 短消息接收号码总数，最多 100
+	DestTermID      []string // 短消息接收号码
+	MsgLength       uint8    // 短消息长度
+	MsgContent      string   // 短消息内容
+	Reserve         string   // 保留
 
 	// 可选参数
 	options Options
@@ -48,27 +48,27 @@ func (p *SmgpSubmitReqPkt) Pack(seqId uint32) ([]byte, error) {
 	w.WriteByte(p.MsgType)
 	w.WriteByte(p.NeedReport)
 	w.WriteByte(p.Priority)
-	w.WriteBytes(p.ServiceID.Byte())
-	w.WriteBytes(p.FeeType.Byte())
-	w.WriteBytes(p.FeeCode.Byte())
-	w.WriteBytes(p.FixedFee.Byte())
+	w.WriteFixedSizeString(p.ServiceID, 10)
+	w.WriteFixedSizeString(p.FeeType, 2)
+	w.WriteFixedSizeString(p.FeeCode, 6)
+	w.WriteFixedSizeString(p.FixedFee, 6)
 	w.WriteByte(p.MsgFormat)
-	w.WriteBytes(p.ValidTime.Byte())
-	w.WriteBytes(p.AtTime.Byte())
-	w.WriteBytes(p.SrcTermID.Byte())
-	w.WriteBytes(p.ChargeTermID.Byte())
+	w.WriteFixedSizeString(p.ValidTime, 17)
+	w.WriteFixedSizeString(p.AtTime, 17)
+	w.WriteFixedSizeString(p.SrcTermID, 21)
+	w.WriteFixedSizeString(p.ChargeTermID, 21)
 	w.WriteByte(p.DestTermIDCount)
 
 	for _, d := range p.DestTermID {
-		w.WriteBytes(d.Byte())
+		w.WriteFixedSizeString(d, 21)
 	}
 	w.WriteByte(p.MsgLength)
-	w.WriteBytes(p.MsgContent)
-	w.WriteBytes(p.Reserve.Byte())
+	w.WriteString(p.MsgContent)
+	w.WriteFixedSizeString(p.Reserve, 8)
 
-	for k, o := range p.options {
-		w.WriteByte(uint8(k))
-		w.WriteBytes(o)
+	for _, o := range p.options {
+		//w.WriteByte(uint8(k))
+		w.WriteBytes(o.Byte())
 	}
 
 	return w.Bytes()
@@ -81,56 +81,26 @@ func (p *SmgpSubmitReqPkt) Unpack(data []byte) error {
 	p.MsgType = r.ReadByte()
 	p.NeedReport = r.ReadByte()
 	p.Priority = r.ReadByte()
-	p.ServiceID = &OctetString{
-		Data:     r.ReadCString(10),
-		FixedLen: 10,
-	}
-	p.FeeType = &OctetString{
-		Data:     r.ReadCString(2),
-		FixedLen: 2,
-	}
-	p.FeeCode = &OctetString{
-		Data:     r.ReadCString(6),
-		FixedLen: 6,
-	}
-	p.FixedFee = &OctetString{
-		Data:     r.ReadCString(6),
-		FixedLen: 6,
-	}
+	p.ServiceID = string(r.ReadCString(10))
+	p.FeeType = string(r.ReadCString(2))
+	p.FeeCode = string(r.ReadCString(6))
+	p.FixedFee = string(r.ReadCString(6))
 	p.MsgFormat = r.ReadByte()
-	p.ValidTime = &OctetString{
-		Data:     r.ReadCString(17),
-		FixedLen: 17,
-	}
-	p.AtTime = &OctetString{
-		Data:     r.ReadCString(17),
-		FixedLen: 17,
-	}
-	p.SrcTermID = &OctetString{
-		Data:     r.ReadCString(21),
-		FixedLen: 21,
-	}
-	p.ChargeTermID = &OctetString{
-		Data:     r.ReadCString(21),
-		FixedLen: 21,
-	}
+	p.ValidTime = string(r.ReadCString(17))
+	p.AtTime = string(r.ReadCString(17))
+	p.SrcTermID = string(r.ReadCString(21))
+	p.ChargeTermID = string(r.ReadCString(21))
 	p.DestTermIDCount = r.ReadByte()
 	offset += 1 + 1 + 1 + 10 + 2 + 6 + 6 + 1 + 17 + 17 + 21 + 21 + 1
 	for i := 0; i < int(p.DestTermIDCount); i++ {
-		p.DestTermID = append(p.DestTermID, &OctetString{
-			Data:     r.ReadCString(21),
-			FixedLen: 21,
-		})
+		p.DestTermID = append(p.DestTermID, string(r.ReadCString(21)))
 	}
 	offset += 21 * int(p.DestTermIDCount)
 	p.MsgLength = r.ReadByte()
 	msgContent := make([]byte, p.MsgLength)
 	r.ReadBytes(msgContent)
-	p.MsgContent = msgContent
-	p.Reserve = &OctetString{
-		Data:     r.ReadCString(8),
-		FixedLen: 8,
-	}
+	p.MsgContent = string(msgContent)
+	p.Reserve = string(r.ReadCString(8))
 	offset += 1 + int(p.MsgLength) + 8
 
 	options, err := ParseOptions(data[offset:])

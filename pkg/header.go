@@ -22,10 +22,10 @@ func (p *Header) Pack(w *pkgWriter, pktLen, requestId, seqId uint32) *pkgWriter 
 	return w
 }
 
-func (p *Header) Unpack(data []byte) *Header {
-	p.PacketLength = unpackUi32(data[:4])
-	p.RequestID = unpackUi32(data[4:8])
-	p.SequenceID = unpackUi32(data[8:12])
+func (p *Header) Unpack(r *pkgReader) *Header {
+	r.ReadInt(binary.BigEndian, &p.PacketLength)
+	r.ReadInt(binary.BigEndian, &p.RequestID)
+	r.ReadInt(binary.BigEndian, &p.SequenceID)
 	return p
 }
 

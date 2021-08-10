@@ -13,15 +13,15 @@ const (
 )
 
 type SmgpLoginReqPkt struct {
-	ClientID            *OctetString
-	AuthenticatorClient *OctetString
-	Secret              string
+	ClientID            string
+	AuthenticatorClient string
 	LoginMode           uint8
 	TimeStamp           uint32
 	ClientVersion       uint8
 
 	// used in session
 	SequenceID uint32
+	Secret     string
 }
 
 func (p *SmgpLoginReqPkt) Pack(seqId uint32) ([]byte, error) {
@@ -31,19 +31,17 @@ func (p *SmgpLoginReqPkt) Pack(seqId uint32) ([]byte, error) {
 	p.SequenceID = seqId
 
 	// body
-	w.WriteBytes(p.ClientID.Byte())
+	w.WriteString(p.ClientID)
 	if p.TimeStamp == 0 {
 		p.TimeStamp = GenTimestamp()
 	}
-	auth, err := GenAuthenticatorClient(p.ClientID.String(), p.Secret, p.TimeStamp)
+
+	auth, err := GenAuthenticatorClient(p.ClientID, p.Secret, p.TimeStamp)
 	if err != nil {
 		return nil, err
 	}
-	p.AuthenticatorClient = &OctetString{
-		Data:     auth,
-		FixedLen: 16,
-	}
-	w.WriteBytes(p.AuthenticatorClient.Byte())
+	p.AuthenticatorClient = string(auth[:])
+	w.WriteString(p.AuthenticatorClient)
 
 	w.WriteInt(binary.BigEndian, p.LoginMode)
 	w.WriteInt(binary.BigEndian, p.TimeStamp)
@@ -58,18 +56,12 @@ func (p *SmgpLoginReqPkt) Unpack(data []byte) error {
 	// Body: ClientID
 	var sa = make([]byte, 8)
 	r.ReadBytes(sa)
-	p.ClientID = &OctetString{
-		Data:     sa,
-		FixedLen: 8,
-	}
+	p.ClientID = string(sa)
 
 	// Body: AuthenticatorClient
 	var as = make([]byte, 16)
 	r.ReadBytes(as)
-	p.AuthenticatorClient = &OctetString{
-		Data:     as,
-		FixedLen: 16,
-	}
+	p.AuthenticatorClient = string(as)
 
 	// Body: LoginMode
 	r.ReadInt(binary.BigEndian, &p.LoginMode)
@@ -85,6 +77,7 @@ func (p *SmgpLoginReqPkt) String() string {
 	var b bytes.Buffer
 	fmt.Fprintln(&b, "--- SMGP Login Req ---")
 	fmt.Fprintln(&b, "ClientID: ", p.ClientID)
+	fmt.Fprintln(&b, "Secret: ", p.Secret)
 	fmt.Fprintln(&b, "AuthenticatorClient: ", p.AuthenticatorClient)
 	fmt.Fprintln(&b, "LoginMode: ", p.LoginMode)
 	fmt.Fprintln(&b, "TimeStamp: ", p.TimeStamp)
@@ -93,12 +86,13 @@ func (p *SmgpLoginReqPkt) String() string {
 }
 
 type SmgpLoginRespPkt struct {
-	Status              Status       // 请求返回结果
-	AuthenticatorServer *OctetString // 服务器端返回给客户端的认证码
-	ServerVersion       uint8        // 服务器端支持的最高版本号
+	Status              Status // 请求返回结果
+	AuthenticatorServer string // 服务器端返回给客户端的认证码
+	ServerVersion       uint8  // 服务器端支持的最高版本号
+
 	// auth
 	Secret              string
-	AuthenticatorClient *OctetString
+	AuthenticatorClient string
 	// used in session
 	SequenceID uint32
 }
@@ -111,15 +105,14 @@ func (p *SmgpLoginRespPkt) Pack(seqId uint32) ([]byte, error) {
 
 	// body
 	w.WriteInt(binary.BigEndian, p.Status)
+	authClient := NewOctetString(p.AuthenticatorClient).Byte(16)
 	auth := md5.Sum(bytes.Join([][]byte{{uint8(p.Status.Data())},
-		p.AuthenticatorClient.Byte(),
+		authClient,
 		[]byte(p.Secret)},
 		nil))
-	p.AuthenticatorServer = &OctetString{
-		Data:     auth[:],
-		FixedLen: 16,
-	}
-	w.WriteBytes(p.AuthenticatorServer.Byte())
+
+	p.AuthenticatorServer = string(auth[:])
+	w.WriteString(NewOctetString(p.AuthenticatorServer).String(16))
 	w.WriteInt(binary.BigEndian, p.ServerVersion)
 
 	return w.Bytes()
@@ -134,10 +127,7 @@ func (p *SmgpLoginRespPkt) Unpack(data []byte) error {
 	// Body: AuthenticatorServer
 	var s = make([]byte, 16)
 	r.ReadBytes(s)
-	p.AuthenticatorServer = &OctetString{
-		Data:     s,
-		FixedLen: 0,
-	}
+	p.AuthenticatorServer = string(s)
 
 	// Body: Version
 	r.ReadInt(binary.BigEndian, &p.ServerVersion)
