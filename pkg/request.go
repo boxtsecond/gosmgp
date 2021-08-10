@@ -1,4 +1,4 @@
-package request
+package pkg
 
 type RequestID uint32
 

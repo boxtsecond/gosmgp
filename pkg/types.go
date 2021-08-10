@@ -1,4 +1,4 @@
-package request
+package pkg
 
 import (
 	"bytes"
@@ -59,29 +59,16 @@ func (t *TLV) Byte() []byte {
 	return b
 }
 
+func (t *TLV) String() string {
+	return ""
+}
+
 func unpackUi32(b []byte) uint32 {
 	return binary.BigEndian.Uint32(b)
-}
-
-func packUi32(n uint32) []byte {
-	b := make([]byte, 4)
-	binary.BigEndian.PutUint32(b, n)
-	return b
-
-}
-
-func unpackUi16(b []byte) uint16 {
-	return binary.BigEndian.Uint16(b)
 }
 
 func packUi16(n uint16) []byte {
 	b := make([]byte, 2)
 	binary.BigEndian.PutUint16(b, n)
 	return b
-}
-
-func packUi8(n uint8) []byte {
-	b := make([]byte, 2)
-	binary.BigEndian.PutUint16(b, uint16(n))
-	return b[1:]
 }

@@ -1,4 +1,4 @@
-package request
+package pkg
 
 import (
 	"bytes"
@@ -48,6 +48,19 @@ func (w *pkgWriter) WriteByte(b byte) {
 	if err != nil {
 		w.err = NewOpError(err,
 			fmt.Sprintf("pkgWriter.WriteByte writes: %x", b))
+		return
+	}
+}
+
+func (w *pkgWriter) WriteBytes(b []byte) {
+	if w.err != nil {
+		return
+	}
+
+	_, err := w.b.Write(b)
+	if err != nil {
+		w.err = NewOpError(err,
+			fmt.Sprintf("pkgWriter.WriteBytes writes: %x", b))
 		return
 	}
 }

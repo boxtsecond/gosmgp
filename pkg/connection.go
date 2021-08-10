@@ -6,8 +6,6 @@ import (
 	"net"
 	"sync"
 	"time"
-
-	cmd "github.com/boxtsecond/gosmgp/pkg/request"
 )
 
 type State uint8
@@ -24,8 +22,8 @@ type Conn struct {
 	Version uint8
 
 	// for SeqId generator goroutine
-	SeqId <-chan uint32
-	done  chan<- struct{}
+	SequenceID <-chan uint32
+	done       chan<- struct{}
 }
 
 func newSeqIdGenerator() (<-chan uint32, chan<- struct{}) {
@@ -50,10 +48,10 @@ func newSeqIdGenerator() (<-chan uint32, chan<- struct{}) {
 func NewConnection(conn net.Conn, v uint8) *Conn {
 	seqId, done := newSeqIdGenerator()
 	c := &Conn{
-		Conn:    conn,
-		Version: v,
-		SeqId:   seqId,
-		done:    done,
+		Conn:       conn,
+		Version:    v,
+		SequenceID: seqId,
+		done:       done,
 	}
 	tc := c.Conn.(*net.TCPConn)
 	tc.SetKeepAlive(true) //Keepalive as default
@@ -75,9 +73,9 @@ func (c *Conn) SetState(state State) {
 	c.State = state
 }
 
-func (c *Conn) SendPkt(packet cmd.Packer, seqId uint32) error {
+func (c *Conn) SendPkt(packet Packer, seqId uint32) error {
 	if c.State == CONNECTION_CLOSED {
-		return cmd.ErrConnIsClosed
+		return ErrConnIsClosed
 	}
 
 	data, err := packet.Pack(seqId)
@@ -98,7 +96,7 @@ const (
 )
 
 type readBuffer struct {
-	Header   cmd.Header
+	Header   *Header
 	leftData [defaultReadBufferSize]byte
 }
 
@@ -108,9 +106,9 @@ var readBufferPool = sync.Pool{
 	},
 }
 
-func (c *Conn) RecvAndUnpackPkt(timeout time.Duration) (interface{}, error) {
+func (c *Conn) RecvAndUnpackPkt(timeout time.Duration) (Packer, error) {
 	if c.State == CONNECTION_CLOSED {
-		return nil, cmd.ErrConnIsClosed
+		return nil, ErrConnIsClosed
 	}
 	defer c.SetReadDeadline(time.Time{})
 
@@ -127,19 +125,19 @@ func (c *Conn) RecvAndUnpackPkt(timeout time.Duration) (interface{}, error) {
 		netErr, ok := err.(net.Error)
 		if ok {
 			if netErr.Timeout() {
-				return nil, cmd.ErrReadHeaderTimeout
+				return nil, ErrReadHeaderTimeout
 			}
 		}
 		return nil, err
 	}
 
-	if rb.Header.PacketLength < cmd.SMGP_PACKET_MIN || rb.Header.PacketLength > cmd.SMGP_PACKET_MAX {
-		return nil, cmd.ErrTotalLengthInvalid
+	if rb.Header.PacketLength < SMGP_PACKET_MIN || rb.Header.PacketLength > SMGP_PACKET_MAX {
+		return nil, ErrTotalLengthInvalid
 	}
 
-	if !((rb.Header.RequestID > cmd.SMGP_REQUEST_MIN && rb.Header.RequestID < cmd.SMGP_REQUEST_MAX) ||
-		(rb.Header.RequestID > cmd.SMGP_RESPONSE_MIN && rb.Header.RequestID < cmd.SMGP_RESPONSE_MAX)) {
-		return nil, cmd.ErrRequestIDInvalid
+	if !((RequestID(rb.Header.RequestID) > SMGP_REQUEST_MIN && RequestID(rb.Header.RequestID) < SMGP_REQUEST_MAX) ||
+		(RequestID(rb.Header.RequestID) > SMGP_RESPONSE_MIN && RequestID(rb.Header.RequestID) < SMGP_RESPONSE_MAX)) {
+		return nil, ErrRequestIDInvalid
 	}
 
 	if timeout != 0 {
@@ -153,72 +151,39 @@ func (c *Conn) RecvAndUnpackPkt(timeout time.Duration) (interface{}, error) {
 		netErr, ok := err.(net.Error)
 		if ok {
 			if netErr.Timeout() {
-				return nil, cmd.ErrReadPktBodyTimeout
+				return nil, ErrReadPktBodyTimeout
 			}
 		}
 		return nil, err
 	}
 
-	var p cmd.Packer
+	var p Packer
+	sequenceID := rb.Header.SequenceID
 
-	switch rb.Header.RequestID {
-	case cmd.SMGP_LOGIN:
-		p = &cmd.SmgpLoginReqPkt{
-			SequenceID: rb.Header.SequenceID,
-		}
-	//case CMPP_CONNECTIONECT_RESP:
-	//	if c.Typ == V30 {
-	//		p = &Cmpp3ConnRspPkt{}
-	//	} else {
-	//		p = &Cmpp2ConnRspPkt{}
-	//	}
-	//case CMPP_TERMINATE:
-	//	p = &CmppTerminateReqPkt{}
-	//case CMPP_TERMINATE_RESP:
-	//	p = &CmppTerminateRspPkt{}
-	//case CMPP_SUBMIT:
-	//	if c.Typ == V30 {
-	//		p = &Cmpp3SubmitReqPkt{}
-	//	} else {
-	//		p = &Cmpp2SubmitReqPkt{}
-	//	}
-	//case CMPP_SUBMIT_RESP:
-	//	if c.Typ == V30 {
-	//		p = &Cmpp3SubmitRspPkt{}
-	//	} else {
-	//		p = &Cmpp2SubmitRspPkt{}
-	//	}
-	//case CMPP_DELIVER:
-	//	if c.Typ == V30 {
-	//		p = &Cmpp3DeliverReqPkt{}
-	//	} else {
-	//		p = &Cmpp2DeliverReqPkt{}
-	//	}
-	//case CMPP_DELIVER_RESP:
-	//	if c.Typ == V30 {
-	//		p = &Cmpp3DeliverRspPkt{}
-	//	} else {
-	//		p = &Cmpp2DeliverRspPkt{}
-	//	}
-	//case CMPP_FWD:
-	//	if c.Typ == V30 {
-	//		p = &Cmpp3FwdReqPkt{}
-	//	} else {
-	//		p = &Cmpp2FwdReqPkt{}
-	//	}
-	//case CMPP_FWD_RESP:
-	//	if c.Typ == V30 {
-	//		p = &Cmpp3FwdRspPkt{}
-	//	} else {
-	//		p = &Cmpp2FwdRspPkt{}
-	//	}
-	//case CMPP_ACTIVE_TEST:
-	//	p = &CmppActiveTestReqPkt{}
-	//case CMPP_ACTIVE_TEST_RESP:
-	//	p = &CmppActiveTestRspPkt{}
+	switch RequestID(rb.Header.RequestID) {
+	case SMGP_ACTIVE_TEST:
+		p = &SmgpActiveTestReqPkt{SequenceID: sequenceID}
+	case SMGP_ACTIVE_TEST_RESP:
+		p = &SmgpActiveTestRespPkt{SequenceID: sequenceID}
+	case SMGP_LOGIN:
+		p = &SmgpLoginReqPkt{SequenceID: sequenceID}
+	case SMGP_LOGIN_RESP:
+		p = &SmgpLoginRespPkt{SequenceID: sequenceID}
+	case SMGP_SUBMIT:
+		p = &SmgpSubmitReqPkt{SequenceID: sequenceID}
+	case SMGP_SUBMIT_RESP:
+		p = &SmgpSubmitRespPkt{SequenceID: sequenceID}
+	case SMGP_DELIVER:
+		p = &SmgpDeliverReqPkt{SequenceID: sequenceID}
+	case SMGP_DELIVER_RESP:
+		p = &SmgpDeliverRespPkt{SequenceID: sequenceID}
+	case SMGP_EXIT:
+		p = &SmgpExitReqPkt{SequenceID: sequenceID}
+	case SMGP_EXIT_RESP:
+		p = &SmgpExitRespPkt{SequenceID: sequenceID}
 
 	default:
-		return nil, cmd.ErrRequestIDNotSupported
+		return nil, ErrRequestIDNotSupported
 	}
 
 	err = p.Unpack(leftData)
