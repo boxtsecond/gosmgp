@@ -11,6 +11,35 @@ const (
 	SmgpDeliverRespPktLen = HeaderPktLen + 10 + 4 //26d, 0x1a
 )
 
+type SmgpDeliverMsgContent struct {
+	ID         string
+	Sub        string
+	Dlvrd      string
+	SubmitDate string
+	DoneDate   string
+	Stat       string
+	Err        string
+	Txt        string
+}
+
+func (p *SmgpDeliverMsgContent) Encode() (string, error) {
+	var pkgLen uint32 = 10 + 3 + 3 + 10 + 10 + 7 + 3 + 20
+	var w = newPkgWriter(pkgLen)
+
+	id, _ := hex.DecodeString(p.ID)
+	w.WriteBytes(NewOctetString(fmt.Sprintf("%s", id)).Byte(10))
+	w.WriteFixedSizeString(p.Sub, 3)
+	w.WriteFixedSizeString(p.Dlvrd, 3)
+	w.WriteFixedSizeString(p.SubmitDate, 10)
+	w.WriteFixedSizeString(p.DoneDate, 10)
+	w.WriteFixedSizeString(p.Stat, 7)
+	w.WriteFixedSizeString(p.Err, 3)
+	w.WriteFixedSizeString(p.Txt, 20)
+
+	b, err := w.Bytes()
+	return string(b), err
+}
+
 type SmgpDeliverReqPkt struct {
 	MsgID      string // 短消息流水号
 	IsReport   uint8  // 短消息流水号

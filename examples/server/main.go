@@ -59,12 +59,23 @@ func handleSubmit(r *server.Response, p *server.Packet, l *log.Logger) (bool, er
 	for i, d := range req.DestTermID {
 		l.Printf("handleSubmit: handle submit from %s ok! msgid[%s], destTerminalId[%s]\n",
 			req.SrcTermID, fmt.Sprintf("%s_%d", resp.MsgID, i), d)
-		msgContent := "DELIVRD"
+		t := pkg.GenNowTimeYYStr()
+		msgStat := pkg.SmgpDeliverMsgContent{
+			ID:         resp.MsgID,
+			Sub:        "",
+			Dlvrd:      "",
+			SubmitDate: t,
+			DoneDate:   t,
+			Stat:       "DELIVRD",
+			Err:        "",
+			Txt:        "",
+		}
+		msgContent, _ := msgStat.Encode()
 		deliverPkgs = append(deliverPkgs, &pkg.SmgpDeliverReqPkt{
 			MsgID:      resp.MsgID,
 			IsReport:   1,
 			MsgFormat:  8,
-			RecvTime:   pkg.GenNowTimeStr(),
+			RecvTime:   pkg.GenNowTimeYYYYStr(),
 			SrcTermID:  req.SrcTermID,
 			DestTermID: d,
 			MsgLength:  uint8(len(msgContent)),

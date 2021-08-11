@@ -21,9 +21,13 @@ func GenTimestamp() uint32 {
 	return uint32(i)
 }
 
-func GenNowTimeStr() string {
+func GenNowTimeYYYYStr() string {
 	s := time.Now().Format("20060102150405")
 	return s
+}
+
+func GenNowTimeYYStr() string {
+	return time.Unix(time.Now().Unix(), 0).Format("0601021504")
 }
 
 // 生成客户端认证码
@@ -52,7 +56,6 @@ func GenAuthenticatorClient(clientId, secret string, timestamp uint32) ([16]byte
 //时间：4字节（BCD码），格式为MMDDHHMM（月日时分）
 //序列号：3字节（BCD码），取值范围为000000～999999，从0开始，顺序累加，步长为1，循环使用。
 //例如某SMGW的代码为010061，在2003年1月16日下午5时0分收到一条短消息，这条短消息的MsgID为：0x01006101161700012345，其中010061表示SMGW代码，01161700表示接收时间，012345表示消息序列号。
-
 func GenMsgID(spId string, sequenceNum uint32) (string, error) {
 	now := time.Now()
 	month, _ := strconv.ParseInt(fmt.Sprintf("%d", now.Month()), 10, 8)
@@ -62,7 +65,7 @@ func GenMsgID(spId string, sequenceNum uint32) (string, error) {
 	spIdInt, _ := strconv.ParseInt(spId, 10, 24)
 	binaryStr := fmt.Sprintf("%024b%08b%08b%08b%08b%024b", spIdInt, month, day, hour, min, sequenceNum)
 	head, _ := strconv.ParseUint(binaryStr[:64], 2, 64)
-	end, _ := strconv.ParseUint(binaryStr[64:], 2, 64)
+	end, _ := strconv.ParseUint(binaryStr[64:], 2, 16)
 	return fmt.Sprintf("%016x%04x", head, end), nil
 }
 
