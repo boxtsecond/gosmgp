@@ -106,8 +106,6 @@ func main() {
 		server.HandlerFunc(handleLogin),
 		server.HandlerFunc(handleSubmit),
 	}
-	fmt.Println(pkg.UnpackMsgId("00007b080b132f003039"))
-	fmt.Println(pkg.GenMsgID("000123", 12345))
 
 	err := server.ListenAndServe(":8890",
 		pkg.VERSION,
