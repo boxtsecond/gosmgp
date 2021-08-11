@@ -37,7 +37,8 @@ func (p *SmgpDeliverReqPkt) Pack(seqId uint32) ([]byte, error) {
 	p.SequenceID = seqId
 
 	// body
-	w.WriteFixedSizeString(p.MsgID, 10)
+	msgId, _ := hex.DecodeString(p.MsgID)
+	w.WriteBytes(NewOctetString(fmt.Sprintf("%s", msgId)).Byte(10))
 	w.WriteByte(p.IsReport)
 	w.WriteByte(p.MsgFormat)
 	w.WriteFixedSizeString(p.RecvTime, 14)
@@ -111,7 +112,8 @@ func (p *SmgpDeliverRespPkt) Pack(seqId uint32) ([]byte, error) {
 	p.SequenceID = seqId
 
 	// body
-	w.WriteFixedSizeString(p.MsgID, 10)
+	msgId, _ := hex.DecodeString(p.MsgID)
+	w.WriteBytes(NewOctetString(fmt.Sprintf("%s", msgId)).Byte(10))
 	w.WriteInt(binary.BigEndian, p.Status)
 
 	return w.Bytes()

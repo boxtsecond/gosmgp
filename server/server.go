@@ -32,12 +32,12 @@ type Response struct {
 }
 
 type Handler interface {
-	ServeCmpp(*Response, *Packet, *log.Logger) (bool, error)
+	ServeSmgp(*Response, *Packet, *log.Logger) (bool, error)
 }
 
 type HandlerFunc func(*Response, *Packet, *log.Logger) (bool, error)
 
-func (f HandlerFunc) ServeCmpp(r *Response, p *Packet, l *log.Logger) (bool, error) {
+func (f HandlerFunc) ServeSmgp(r *Response, p *Packet, l *log.Logger) (bool, error) {
 	return f(r, p, l)
 }
 
@@ -67,7 +67,7 @@ type conn struct {
 
 func (srv *Server) Serve(l net.Listener) error {
 	defer l.Close()
-	var tempDelay time.Duration // how long to sleep on accept failure
+	var tempDelay time.Duration
 	for {
 		rw, e := l.Accept()
 		if e != nil {
@@ -145,6 +145,10 @@ func (c *conn) readPacket() (*Response, error) {
 				Packer: p,
 				Conn:   c.Conn,
 			},
+			Packer: &pkg.SmgpDeliverRespPkt{
+				SequenceID: p.SequenceID,
+			},
+			SequenceID: p.SequenceID,
 		}
 		c.server.ErrorLog.Printf("receive a smgp deliver response from %v[%d]\n",
 			c.Conn.RemoteAddr(), p.SequenceID)
@@ -296,8 +300,11 @@ func (c *conn) serve() {
 			break
 		}
 
-		_, err = c.server.Handler.ServeCmpp(r, r.Packet, c.server.ErrorLog)
+		_, err = c.server.Handler.ServeSmgp(r, r.Packet, c.server.ErrorLog)
 		if err1 := c.finishPacket(r); err1 != nil {
+			fmt.Println("--------------err1")
+			fmt.Println(err1)
+			fmt.Println(time.Now())
 			break
 		}
 
@@ -340,7 +347,7 @@ func ListenAndServe(addr string, version uint8, t time.Duration, n int32, logWri
 	var handler Handler
 	handler = HandlerFunc(func(r *Response, p *Packet, l *log.Logger) (bool, error) {
 		for _, h := range handlers {
-			next, err := h.ServeCmpp(r, p, l)
+			next, err := h.ServeSmgp(r, p, l)
 			if err != nil || !next {
 				return next, err
 			}

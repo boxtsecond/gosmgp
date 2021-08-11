@@ -13,6 +13,7 @@ import (
 const (
 	user     string = "10000001"
 	password string = "12345678"
+	spId     string = "123456"
 )
 
 func handleLogin(r *server.Response, p *server.Packet, l *log.Logger) (bool, error) {
@@ -51,16 +52,53 @@ func handleSubmit(r *server.Response, p *server.Packet, l *log.Logger) (bool, er
 	if !ok {
 		return true, nil
 	}
-	fmt.Println("-------handle submit-------")
-	fmt.Println(req)
 
 	resp := r.Packer.(*pkg.SmgpSubmitRespPkt)
-	resp.MsgID = "12878564852733378560" //0xb2, 0xb9, 0xda, 0x80, 0x00, 0x01, 0x00, 0x00
+	resp.MsgID, _ = pkg.GenMsgID(spId, <-p.Conn.SequenceNum)
+	deliverPkgs := make([]*pkg.SmgpDeliverReqPkt, 0)
 	for i, d := range req.DestTermID {
-		l.Printf("handleSubmit: handle submit from %s ok! msgid[%d], destTerminalId[%s]\n",
+		l.Printf("handleSubmit: handle submit from %s ok! msgid[%s], destTerminalId[%s]\n",
 			req.SrcTermID, fmt.Sprintf("%s_%d", resp.MsgID, i), d)
+		msgContent := "DELIVRD"
+		deliverPkgs = append(deliverPkgs, &pkg.SmgpDeliverReqPkt{
+			MsgID:      resp.MsgID,
+			IsReport:   1,
+			MsgFormat:  8,
+			RecvTime:   pkg.GenNowTimeStr(),
+			SrcTermID:  req.SrcTermID,
+			DestTermID: d,
+			MsgLength:  uint8(len(msgContent)),
+			MsgContent: msgContent,
+			Reserve:    "",
+			Options:    nil,
+			SequenceID: <-p.Conn.SequenceID,
+		})
 	}
+	go mockDeliver(deliverPkgs, p)
 	return true, nil
+}
+
+func mockDeliver(pkgs []*pkg.SmgpDeliverReqPkt, s *server.Packet) {
+	t := time.NewTicker(10 * time.Second)
+	defer t.Stop()
+	for {
+		select {
+		case <-t.C:
+
+			for _, p := range pkgs {
+				err := s.SendPkt(p, p.SequenceID)
+				if err != nil {
+					log.Printf("server smgp: send a smgp deliver request error: %s.", err)
+					return
+				} else {
+					log.Printf("server smgp: send a smgp deliver request ok.")
+				}
+			}
+
+		default:
+		}
+
+	}
 }
 
 func main() {
@@ -68,6 +106,8 @@ func main() {
 		server.HandlerFunc(handleLogin),
 		server.HandlerFunc(handleSubmit),
 	}
+	fmt.Println(pkg.UnpackMsgId("00007b080b132f003039"))
+	fmt.Println(pkg.GenMsgID("000123", 12345))
 
 	err := server.ListenAndServe(":8890",
 		pkg.VERSION,

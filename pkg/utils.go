@@ -21,6 +21,11 @@ func GenTimestamp() uint32 {
 	return uint32(i)
 }
 
+func GenNowTimeStr() string {
+	s := time.Now().Format("20060102150405")
+	return s
+}
+
 // 生成客户端认证码
 // 其值通过单向MD5 hash计算得出，表示如下：
 // AuthenticatorClient =MD5（ClientID+7 字节的二进制0（0x00） + Shared secret+Timestamp）
@@ -35,6 +40,40 @@ func GenAuthenticatorClient(clientId, secret string, timestamp uint32) ([16]byte
 		nil))
 
 	return auth, nil
+}
+
+//MsgId字段包含以下三部分内容：
+//SMGW代码：3字节（BCD码）
+//	编码规则如下：
+//	3位区号（不足前添0）+2位设备类别+1位序号
+//	区号：所在省长途区号
+//	设备类别：SMGW取06
+//	序号：所在省的设备编码，例如第一个网关编号为1
+//时间：4字节（BCD码），格式为MMDDHHMM（月日时分）
+//序列号：3字节（BCD码），取值范围为000000～999999，从0开始，顺序累加，步长为1，循环使用。
+//例如某SMGW的代码为010061，在2003年1月16日下午5时0分收到一条短消息，这条短消息的MsgID为：0x01006101161700012345，其中010061表示SMGW代码，01161700表示接收时间，012345表示消息序列号。
+
+func GenMsgID(spId string, sequenceNum uint32) (string, error) {
+	now := time.Now()
+	month, _ := strconv.ParseInt(fmt.Sprintf("%d", now.Month()), 10, 8)
+	day := now.Day()
+	hour := now.Hour()
+	min := now.Minute()
+	spIdInt, _ := strconv.ParseInt(spId, 10, 24)
+	binaryStr := fmt.Sprintf("%024b%08b%08b%08b%08b%024b", spIdInt, month, day, hour, min, sequenceNum)
+	head, _ := strconv.ParseUint(binaryStr[:64], 2, 64)
+	end, _ := strconv.ParseUint(binaryStr[64:], 2, 64)
+	return fmt.Sprintf("%016x%04x", head, end), nil
+}
+
+func UnpackMsgId(msgId string) string {
+	spId, _ := strconv.ParseUint(msgId[:6], 16, 24)
+	month, _ := strconv.ParseUint(msgId[6:8], 16, 8)
+	day, _ := strconv.ParseUint(msgId[8:10], 16, 8)
+	hour, _ := strconv.ParseUint(msgId[10:12], 16, 8)
+	min, _ := strconv.ParseUint(msgId[12:14], 16, 8)
+	seqNum, _ := strconv.ParseUint(msgId[14:], 16, 24)
+	return fmt.Sprintf("spId: %s, month: %d, day: %d, hour: %d, min: %d, seqNum: %d, ", NewOctetString(strconv.Itoa(int(spId))).FixedString(6), month, day, hour, min, seqNum)
 }
 
 func Utf8ToUcs2(in string) (string, error) {

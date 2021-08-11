@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"encoding/binary"
+	"fmt"
 	"strings"
 )
 
@@ -44,6 +45,23 @@ func (o OctetString) Byte(fixedLength int) []byte {
 	}
 
 	return data
+}
+
+func (o OctetString) FixedString(fixedLength int) string {
+	length := len(o)
+	s := o
+	if length == fixedLength {
+		return string(s)
+	}
+
+	if length > fixedLength {
+		return string(s[length-fixedLength:])
+	}
+	tmp := make([]string, fixedLength-len(s))
+	for i := range tmp {
+		tmp[i] = "0"
+	}
+	return fmt.Sprintf("%s%s", strings.Join(tmp, ""), s)
 }
 
 // 可选参数采用TLV（Tag、Length、Value）形式定义，
