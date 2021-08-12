@@ -52,12 +52,12 @@ func startAClient(idx int) {
 			p := &pkg.SmgpSubmitReqPkt{
 				MsgType:         pkg.MT,
 				NeedReport:      pkg.NEED_REPORT,
-				Priority:        1,
+				Priority:        pkg.NORMAL_PRIORITY,
 				ServiceID:       "",
 				FeeType:         "00",
 				FeeCode:         "0",
 				FixedFee:        "0",
-				MsgFormat:       8,
+				MsgFormat:       pkg.GB18030,
 				ValidTime:       "",
 				AtTime:          "",
 				SrcTermID:       *spCode,
@@ -105,7 +105,7 @@ func startAClient(idx int) {
 				log.Printf("client %d: send smgp deliver response error: %s.", idx, err)
 				break
 			} else {
-				log.Printf("client %d: send smgp deliver response ok.")
+				log.Printf("client %d: send smgp deliver response ok.", idx)
 			}
 
 		case *pkg.SmgpActiveTestReqPkt:

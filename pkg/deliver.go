@@ -40,6 +40,36 @@ func (p *SmgpDeliverMsgContent) Encode() (string, error) {
 	return string(b), err
 }
 
+func (p *SmgpDeliverMsgContent) Decode(data []byte) error {
+	var r = newPkgReader(data)
+
+	p.ID = hex.EncodeToString(r.ReadCString(10))
+	p.Sub = string(r.ReadCString(3))
+	p.Dlvrd = string(r.ReadCString(3))
+	p.SubmitDate = string(r.ReadCString(10))
+	p.DoneDate = string(r.ReadCString(10))
+	p.Stat = string(r.ReadCString(7))
+	p.Err = string(r.ReadCString(3))
+	p.Txt = string(r.ReadCString(20))
+
+	return r.Error()
+}
+
+func (p *SmgpDeliverMsgContent) String() string {
+	var b bytes.Buffer
+	fmt.Fprintln(&b, "")
+	fmt.Fprintln(&b, "\tID: ", p.ID)
+	fmt.Fprintln(&b, "\tSub: ", p.Sub)
+	fmt.Fprintln(&b, "\tDlvrd: ", p.Dlvrd)
+	fmt.Fprintln(&b, "\tSubmitDate: ", p.SubmitDate)
+	fmt.Fprintln(&b, "\tDoneDate: ", p.DoneDate)
+	fmt.Fprintln(&b, "\tStat: ", p.Stat)
+	fmt.Fprintln(&b, "\tErr: ", p.Err)
+	fmt.Fprintln(&b, "\tTxt: ", p.Txt)
+
+	return b.String()
+}
+
 type SmgpDeliverReqPkt struct {
 	MsgID      string // 短消息流水号
 	IsReport   uint8  // 短消息流水号
@@ -120,7 +150,9 @@ func (p *SmgpDeliverReqPkt) String() string {
 	fmt.Fprintln(&b, "SrcTermID: ", p.SrcTermID)
 	fmt.Fprintln(&b, "DestTermID: ", p.DestTermID)
 	fmt.Fprintln(&b, "MsgLength: ", p.MsgLength)
-	fmt.Fprintln(&b, "MsgContent: ", string(p.MsgContent))
+	msgContent := &SmgpDeliverMsgContent{}
+	_ = msgContent.Decode([]byte(p.MsgContent))
+	fmt.Fprintln(&b, "MsgContent: ", msgContent.String())
 	//fmt.Fprintln(&b, "Options: ", p.Options)
 
 	return b.String()

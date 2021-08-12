@@ -73,8 +73,8 @@ func handleSubmit(r *server.Response, p *server.Packet, l *log.Logger) (bool, er
 		msgContent, _ := msgStat.Encode()
 		deliverPkgs = append(deliverPkgs, &pkg.SmgpDeliverReqPkt{
 			MsgID:      resp.MsgID,
-			IsReport:   1,
-			MsgFormat:  8,
+			IsReport:   pkg.IS_REPORT,
+			MsgFormat:  pkg.ASCII,
 			RecvTime:   pkg.GenNowTimeYYYYStr(),
 			SrcTermID:  req.SrcTermID,
 			DestTermID: d,

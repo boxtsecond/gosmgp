@@ -36,3 +36,11 @@ const (
 	NO_NEED_REPORT = 0
 	NEED_REPORT    = 1
 )
+
+// 短消息发送优先级
+const (
+	LOW_PRIORITY = iota
+	NORMAL_PRIORITY
+	HIGHER_PRIORITY
+	HIGHEST_PRIORITY
+)
