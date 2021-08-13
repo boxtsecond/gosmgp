@@ -12,21 +12,21 @@ const (
 )
 
 type SmgpDeliverMsgContent struct {
-	ID         string
-	Sub        string
-	Dlvrd      string
-	SubmitDate string
-	DoneDate   string
-	Stat       string
-	Err        string
-	Txt        string
+	SubmitMsgID string // submit resp 的 MsgID
+	Sub         string
+	Dlvrd       string
+	SubmitDate  string
+	DoneDate    string
+	Stat        string
+	Err         string
+	Txt         string
 }
 
 func (p *SmgpDeliverMsgContent) Encode() (string, error) {
 	var pkgLen uint32 = 10 + 3 + 3 + 10 + 10 + 7 + 3 + 20
 	var w = newPkgWriter(pkgLen)
 
-	id, _ := hex.DecodeString(p.ID)
+	id, _ := hex.DecodeString(p.SubmitMsgID)
 	w.WriteBytes(NewOctetString(fmt.Sprintf("%s", id)).Byte(10))
 	w.WriteFixedSizeString(p.Sub, 3)
 	w.WriteFixedSizeString(p.Dlvrd, 3)
@@ -40,25 +40,23 @@ func (p *SmgpDeliverMsgContent) Encode() (string, error) {
 	return string(b), err
 }
 
-func (p *SmgpDeliverMsgContent) Decode(data []byte) error {
-	var r = newPkgReader(data)
-
-	p.ID = hex.EncodeToString(r.ReadCString(10))
-	p.Sub = string(r.ReadCString(3))
-	p.Dlvrd = string(r.ReadCString(3))
-	p.SubmitDate = string(r.ReadCString(10))
-	p.DoneDate = string(r.ReadCString(10))
-	p.Stat = string(r.ReadCString(7))
-	p.Err = string(r.ReadCString(3))
-	p.Txt = string(r.ReadCString(20))
-
-	return r.Error()
+func DecodeDeliverMsgContent(data []byte) *SmgpDeliverMsgContent {
+	p := &SmgpDeliverMsgContent{}
+	p.SubmitMsgID = hex.EncodeToString(data[3:13])
+	p.Sub = string(data[18:21])
+	p.Dlvrd = string(data[28:31])
+	p.SubmitDate = string(data[44:54])
+	p.DoneDate = string(data[65:75])
+	p.Stat = string(data[81:88])
+	p.Err = string(data[93:96])
+	p.Txt = string(data[101:])
+	return p
 }
 
 func (p *SmgpDeliverMsgContent) String() string {
 	var b bytes.Buffer
 	fmt.Fprintln(&b, "")
-	fmt.Fprintln(&b, "\tID: ", p.ID)
+	fmt.Fprintln(&b, "\tID(SubmitMsgID): ", p.SubmitMsgID)
 	fmt.Fprintln(&b, "\tSub: ", p.Sub)
 	fmt.Fprintln(&b, "\tDlvrd: ", p.Dlvrd)
 	fmt.Fprintln(&b, "\tSubmitDate: ", p.SubmitDate)
@@ -78,14 +76,15 @@ type SmgpDeliverReqPkt struct {
 	SrcTermID  string // 短消息发送号码
 	DestTermID string // 短消息接收号码
 	MsgLength  uint8  //  短消息长度
-	MsgContent string // 短消息内容
+	MsgContent []byte // 短消息内容
 	Reserve    string // 保留
 
 	// 可选字段
 	Options Options
 
 	// used in session
-	SequenceID uint32
+	SequenceID     uint32
+	MsgStatContent *SmgpDeliverMsgContent
 }
 
 func (p *SmgpDeliverReqPkt) Pack(seqId uint32) ([]byte, error) {
@@ -104,11 +103,12 @@ func (p *SmgpDeliverReqPkt) Pack(seqId uint32) ([]byte, error) {
 	w.WriteFixedSizeString(p.SrcTermID, 21)
 	w.WriteFixedSizeString(p.DestTermID, 21)
 	w.WriteByte(p.MsgLength)
-	w.WriteString(p.MsgContent)
+	w.WriteBytes(p.MsgContent)
 	w.WriteFixedSizeString(p.Reserve, 8)
 
 	for _, o := range p.Options {
-		w.WriteBytes(o.Byte())
+		b, _ := o.Byte()
+		w.WriteBytes(b)
 	}
 
 	return w.Bytes()
@@ -125,9 +125,12 @@ func (p *SmgpDeliverReqPkt) Unpack(data []byte) error {
 	p.SrcTermID = string(r.ReadCString(21))
 	p.DestTermID = string(r.ReadCString(21))
 	p.MsgLength = r.ReadByte()
-	msgContent := make([]byte, p.MsgLength)
-	r.ReadBytes(msgContent)
-	p.MsgContent = string(msgContent[:])
+
+	s := make([]byte, p.MsgLength)
+	r.ReadBytes(s)
+	p.MsgContent = s
+	p.MsgStatContent = DecodeDeliverMsgContent(p.MsgContent)
+
 	p.Reserve = string(r.ReadCString(8))
 	offset += 10 + 1 + 1 + 14 + 21 + 21 + 1 + int(p.MsgLength) + 8
 
@@ -150,10 +153,8 @@ func (p *SmgpDeliverReqPkt) String() string {
 	fmt.Fprintln(&b, "SrcTermID: ", p.SrcTermID)
 	fmt.Fprintln(&b, "DestTermID: ", p.DestTermID)
 	fmt.Fprintln(&b, "MsgLength: ", p.MsgLength)
-	msgContent := &SmgpDeliverMsgContent{}
-	_ = msgContent.Decode([]byte(p.MsgContent))
-	fmt.Fprintln(&b, "MsgContent: ", msgContent.String())
-	//fmt.Fprintln(&b, "Options: ", p.Options)
+	fmt.Fprintln(&b, "MsgContent: ", p.MsgStatContent.String())
+	fmt.Fprintln(&b, "Options: ", p.Options.String())
 
 	return b.String()
 }

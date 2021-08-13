@@ -185,7 +185,6 @@ func (c *Conn) RecvAndUnpackPkt(timeout time.Duration) (Packer, error) {
 	sequenceID := rb.Header.SequenceID
 	fmt.Println("===============")
 	fmt.Println(RequestID(rb.Header.RequestID))
-	fmt.Println(rb.Header.SequenceID)
 
 	switch RequestID(rb.Header.RequestID) {
 	case SMGP_ACTIVE_TEST:

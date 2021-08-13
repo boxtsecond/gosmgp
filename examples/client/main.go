@@ -17,7 +17,7 @@ var (
 	addr      = flag.String("addr", ":8890", "smgp addr(运营商地址)")
 	clientID  = flag.String("clientID", "10000001", "登陆账号")
 	secret    = flag.String("secret", "12345678", "登陆密码")
-	loginMode = flag.String("loginMode", "2", "登陆密码")
+	loginMode = flag.String("loginMode", "0", "登陆模式")
 	spID      = flag.String("spID", "123456", "企业代码")
 	spCode    = flag.String("spCode", "123456", "SP的接入号码")
 	phone     = flag.String("phone", "8618012345678", "接收手机号码, 86..., 多个使用,分割")
@@ -39,34 +39,46 @@ func startAClient(idx int) {
 
 	t := time.NewTicker(time.Second)
 	defer t.Stop()
+	maxSubmit := 5
+	count := 0
 	for {
 		select {
 		case <-t.C:
-			cont, err := pkg.Utf8ToUcs2(*msg)
+			if count >= maxSubmit {
+				continue
+			}
+			cont, err := pkg.Utf8ToGB18030(*msg)
 			if err != nil {
-				fmt.Printf("client %d: utf8 to ucs2 transform err: %s.", idx, err)
+				fmt.Printf("client %d: utf8 to gb18030 transform err: %s.", idx, err)
 				return
 			}
 			destStrArr := strings.Split(*phone, ",")
 
 			p := &pkg.SmgpSubmitReqPkt{
-				MsgType:         pkg.MT,
-				NeedReport:      pkg.NEED_REPORT,
-				Priority:        pkg.NORMAL_PRIORITY,
-				ServiceID:       "",
-				FeeType:         "00",
-				FeeCode:         "0",
-				FixedFee:        "0",
-				MsgFormat:       pkg.GB18030,
-				ValidTime:       "",
-				AtTime:          "",
-				SrcTermID:       *spCode,
+				MsgType:    pkg.MT,
+				NeedReport: pkg.NEED_REPORT,
+				Priority:   pkg.NORMAL_PRIORITY,
+				ServiceID:  "",
+				FeeType:    "00",
+				FeeCode:    "0",
+				FixedFee:   "0",
+				MsgFormat:  pkg.GB18030,
+				ValidTime:  "",
+				AtTime:     "",
+				//SrcTermID:       *spCode,
+				SrcTermID:       "",
 				ChargeTermID:    "",
 				DestTermIDCount: uint8(len(destStrArr)),
 				DestTermID:      destStrArr,
 				MsgLength:       uint8(len(cont)),
 				MsgContent:      cont,
 				Reserve:         "",
+				//Options: pkg.Options{
+				//	pkg.TAG_PkTotal:  pkg.NewTLV(pkg.TAG_PkTotal, []byte{1}),
+				//	pkg.TAG_PkNumber: pkg.NewTLV(pkg.TAG_PkNumber, []byte{uint8(1)}),
+				//	pkg.TAG_TP_udhi:  pkg.NewTLV(pkg.TAG_TP_udhi, []byte{0}),
+				//	//pkg.TAG_TP_pid:   pkg.NewTLV(pkg.TAG_TP_pid, []byte{1}),
+				//},
 			}
 
 			_, err = c.SendReqPkt(p)
@@ -76,7 +88,7 @@ func startAClient(idx int) {
 			} else {
 				log.Printf("client %d: send a smgp submit request ok", idx)
 			}
-		default:
+			count += 1
 		}
 
 		// recv packets
@@ -88,11 +100,10 @@ func startAClient(idx int) {
 
 		switch p := i.(type) {
 		case *pkg.SmgpSubmitRespPkt:
-			log.Printf("client %d: receive a smgp submit response: %v.", idx, p)
-			log.Printf(pkg.UnpackMsgId(p.MsgID))
+			log.Printf("client %d: receive a smgp submit response: \n%v", idx, p)
 
 		case *pkg.SmgpDeliverReqPkt:
-			log.Printf("client %d: receive a smgp deliver request: %v.", idx, p)
+			log.Printf("client %d: receive a smgp deliver request: \n%v", idx, p)
 			if p.IsReport == 1 {
 				log.Printf("client %d: the smgp deliver request: %s is a status report.", idx, p.MsgID)
 			}
@@ -135,12 +146,17 @@ func startAClient(idx int) {
 
 var wg sync.WaitGroup
 
+func init() {
+	flag.Parse()
+}
+
 func main() {
 	log.Println("Client example start!")
 	for i := 0; i < 1; i++ {
 		wg.Add(1)
 		go startAClient(i + 1)
 	}
+
 	wg.Wait()
 	log.Println("Client example ends!")
 }

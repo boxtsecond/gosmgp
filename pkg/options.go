@@ -70,9 +70,11 @@ func (o Options) Len() int {
 func (o Options) String() string {
 	var b bytes.Buffer
 
-	for k, _ := range o {
+	for _, v := range o {
 		fmt.Fprintln(&b, "--- Options ---")
-		fmt.Fprintln(&b, "Tag: ", TagName[k])
+		fmt.Fprintln(&b, "Tag: ", v.Tag)
+		fmt.Fprintln(&b, "Length: ", v.Length)
+		fmt.Fprintln(&b, "Value: ", v.Value)
 	}
 	return b.String()
 }

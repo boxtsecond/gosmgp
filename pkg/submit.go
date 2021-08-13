@@ -31,14 +31,14 @@ type SmgpSubmitReqPkt struct {
 	Reserve         string   // 保留
 
 	// 可选参数
-	options Options
+	Options Options
 
 	// used in session
 	SequenceID uint32
 }
 
 func (p *SmgpSubmitReqPkt) Pack(seqId uint32) ([]byte, error) {
-	var pktLen = HeaderPktLen + 114 + uint32(p.DestTermIDCount)*21 + uint32(p.MsgLength) + uint32(p.options.Len())
+	var pktLen = HeaderPktLen + 114 + uint32(p.DestTermIDCount)*21 + uint32(p.MsgLength) + uint32(p.Options.Len())
 	var w = newPkgWriter(pktLen)
 	// header
 	w.WriteHeader(pktLen, seqId, SMGP_SUBMIT)
@@ -66,9 +66,9 @@ func (p *SmgpSubmitReqPkt) Pack(seqId uint32) ([]byte, error) {
 	w.WriteString(p.MsgContent)
 	w.WriteFixedSizeString(p.Reserve, 8)
 
-	for _, o := range p.options {
-		//w.WriteByte(uint8(k))
-		w.WriteBytes(o.Byte())
+	for _, o := range p.Options {
+		b, _ := o.Byte()
+		w.WriteBytes(b)
 	}
 
 	return w.Bytes()
@@ -107,7 +107,7 @@ func (p *SmgpSubmitReqPkt) Unpack(data []byte) error {
 	if err != nil {
 		return err
 	}
-	p.options = options
+	p.Options = options
 
 	return r.Error()
 }
@@ -136,7 +136,8 @@ func (p *SmgpSubmitReqPkt) String() string {
 	}
 
 	fmt.Fprintln(&b, "MsgLength: ", p.MsgLength)
-	fmt.Fprintln(&b, "MsgContent: ", string(p.MsgContent))
+	fmt.Fprintln(&b, "MsgContent: ", p.MsgContent)
+	fmt.Fprintln(&b, "Options: ", p.Options.String())
 
 	return b.String()
 }

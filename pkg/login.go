@@ -31,7 +31,7 @@ func (p *SmgpLoginReqPkt) Pack(seqId uint32) ([]byte, error) {
 	p.SequenceID = seqId
 
 	// body
-	w.WriteString(p.ClientID)
+	w.WriteFixedSizeString(p.ClientID, 8)
 	if p.TimeStamp == 0 {
 		p.TimeStamp = GenTimestamp()
 	}
@@ -41,7 +41,7 @@ func (p *SmgpLoginReqPkt) Pack(seqId uint32) ([]byte, error) {
 		return nil, err
 	}
 	p.AuthenticatorClient = string(auth[:])
-	w.WriteString(p.AuthenticatorClient)
+	w.WriteBytes(auth)
 
 	w.WriteInt(binary.BigEndian, p.LoginMode)
 	w.WriteInt(binary.BigEndian, p.TimeStamp)

@@ -84,12 +84,14 @@ func NewTLV(tag Tag, value []byte) *TLV {
 }
 
 // 序列化为字节流
-func (t *TLV) Byte() []byte {
-	b := []byte{}
-	b = append(b, packUi16(uint16(t.Tag))...)
-	b = append(b, packUi16(t.Length)...)
-	b = append(b, t.Value...)
-	return b
+func (t *TLV) Byte() ([]byte, error) {
+	tlvLen := 2 + 2 + t.Length
+	w := newPkgWriter(uint32(tlvLen))
+
+	w.WriteBytes(packUi16(uint16(t.Tag)))
+	w.WriteBytes(packUi16(t.Length))
+	w.WriteBytes(t.Value)
+	return w.Bytes()
 }
 
 func (t *TLV) String() string {
