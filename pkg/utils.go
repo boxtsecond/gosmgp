@@ -170,12 +170,12 @@ func SplitLongSms(content string) [][]byte {
 
 func GetLongMsgPkgs(pkg *SmgpSubmitReqPkt) ([]*SmgpSubmitReqPkt, error) {
 	packets := make([]*SmgpSubmitReqPkt, 0)
-	content, err := Utf8ToUcs2(pkg.MsgContent)
-	if err != nil {
-		return packets, err
-	}
-
-	chunks := SplitLongSms(content)
+	//content, err := Utf8ToUcs2(pkg.MsgContent)
+	//if err != nil {
+	//	return packets, err
+	//}
+	//chunks := SplitLongSms(content)
+	chunks := SplitLongSms(pkg.MsgContent)
 	var tpUdhi uint8
 	if len(chunks) > 1 {
 		tpUdhi = 1

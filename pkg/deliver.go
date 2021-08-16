@@ -22,22 +22,12 @@ type SmgpDeliverMsgContent struct {
 	Txt         string
 }
 
-func (p *SmgpDeliverMsgContent) Encode() (string, error) {
-	var pkgLen uint32 = 10 + 3 + 3 + 10 + 10 + 7 + 3 + 20
-	var w = newPkgWriter(pkgLen)
-
+func (p *SmgpDeliverMsgContent) Encode() string {
+	//id:!rT sub:001 dlrvd:001 submit_date:2108131621 done_date:2108131621 stat:GB:0005 err:000 txt:00000000000000000000
 	id, _ := hex.DecodeString(p.SubmitMsgID)
-	w.WriteBytes(NewOctetString(fmt.Sprintf("%s", id)).Byte(10))
-	w.WriteFixedSizeString(p.Sub, 3)
-	w.WriteFixedSizeString(p.Dlvrd, 3)
-	w.WriteFixedSizeString(p.SubmitDate, 10)
-	w.WriteFixedSizeString(p.DoneDate, 10)
-	w.WriteFixedSizeString(p.Stat, 7)
-	w.WriteFixedSizeString(p.Err, 3)
-	w.WriteFixedSizeString(p.Txt, 20)
+	msgStatStr := fmt.Sprintf("id:%s sub:%s dlvrd:%s submit_date:%s done_date:%s stat:%s err:%s Text:%s", id, p.Sub, p.Dlvrd, p.SubmitDate, p.DoneDate, p.Stat, p.Err, p.Txt)
 
-	b, err := w.Bytes()
-	return string(b), err
+	return msgStatStr
 }
 
 func DecodeDeliverMsgContent(data []byte) *SmgpDeliverMsgContent {

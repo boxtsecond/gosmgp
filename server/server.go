@@ -302,9 +302,6 @@ func (c *conn) serve() {
 
 		_, err = c.server.Handler.ServeSmgp(r, r.Packet, c.server.ErrorLog)
 		if err1 := c.finishPacket(r); err1 != nil {
-			fmt.Println("--------------err1")
-			fmt.Println(err1)
-			fmt.Println(time.Now())
 			break
 		}
 

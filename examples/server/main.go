@@ -61,16 +61,16 @@ func handleSubmit(r *server.Response, p *server.Packet, l *log.Logger) (bool, er
 			req.SrcTermID, fmt.Sprintf("%s_%d", resp.MsgID, i), d)
 		t := pkg.GenNowTimeYYStr()
 		msgStat := pkg.SmgpDeliverMsgContent{
-			ID:         resp.MsgID,
-			Sub:        "",
-			Dlvrd:      "",
-			SubmitDate: t,
-			DoneDate:   t,
-			Stat:       "DELIVRD",
-			Err:        "",
-			Txt:        "",
+			SubmitMsgID: resp.MsgID,
+			Sub:         "001",
+			Dlvrd:       "001",
+			SubmitDate:  t,
+			DoneDate:    t,
+			Stat:        "DELIVRD",
+			Err:         "000",
+			Txt:         "00000000000000000000",
 		}
-		msgContent, _ := msgStat.Encode()
+		msgContent := msgStat.Encode()
 		deliverPkgs = append(deliverPkgs, &pkg.SmgpDeliverReqPkt{
 			MsgID:      resp.MsgID,
 			IsReport:   pkg.IS_REPORT,
@@ -79,10 +79,13 @@ func handleSubmit(r *server.Response, p *server.Packet, l *log.Logger) (bool, er
 			SrcTermID:  req.SrcTermID,
 			DestTermID: d,
 			MsgLength:  uint8(len(msgContent)),
-			MsgContent: msgContent,
+			MsgContent: []byte(msgContent),
 			Reserve:    "",
-			Options:    nil,
 			SequenceID: <-p.Conn.SequenceID,
+			Options: pkg.Options{
+				pkg.TAG_TP_udhi: pkg.NewTLV(pkg.TAG_TP_udhi, []byte{0}),
+				pkg.TAG_TP_pid:  pkg.NewTLV(pkg.TAG_TP_pid, []byte{1}),
+			},
 		})
 	}
 	go mockDeliver(deliverPkgs, p)
@@ -105,6 +108,7 @@ func mockDeliver(pkgs []*pkg.SmgpDeliverReqPkt, s *server.Packet) {
 					log.Printf("server smgp: send a smgp deliver request ok.")
 				}
 			}
+			return
 
 		default:
 		}

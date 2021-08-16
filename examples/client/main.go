@@ -22,6 +22,7 @@ var (
 	spCode    = flag.String("spCode", "123456", "SP的接入号码")
 	phone     = flag.String("phone", "8618012345678", "接收手机号码, 86..., 多个使用,分割")
 	msg       = flag.String("msg", "验证码：1234", "短信内容")
+	//msg = flag.String("msg", "【闪送】您的订单取件密码为 000000 (请妥善保管),订单尾号0000,预计08/16 10:24上门取件。闪送员张师傅,电话8618012345678(本单已开启号码保护,请务必使用本机号码呼叫)。查看闪送员实时位置请点击http://a.bcdefghigk.com/42bag0xV。打开微信-发现-搜一搜-搜索“闪送”查看。", "短信内容")
 )
 
 func startAClient(idx int) {
@@ -39,7 +40,7 @@ func startAClient(idx int) {
 
 	t := time.NewTicker(time.Second)
 	defer t.Stop()
-	maxSubmit := 5
+	maxSubmit := 1
 	count := 0
 	for {
 		select {
@@ -47,6 +48,7 @@ func startAClient(idx int) {
 			if count >= maxSubmit {
 				continue
 			}
+
 			cont, err := pkg.Utf8ToGB18030(*msg)
 			if err != nil {
 				fmt.Printf("client %d: utf8 to gb18030 transform err: %s.", idx, err)
@@ -55,18 +57,17 @@ func startAClient(idx int) {
 			destStrArr := strings.Split(*phone, ",")
 
 			p := &pkg.SmgpSubmitReqPkt{
-				MsgType:    pkg.MT,
-				NeedReport: pkg.NEED_REPORT,
-				Priority:   pkg.NORMAL_PRIORITY,
-				ServiceID:  "",
-				FeeType:    "00",
-				FeeCode:    "0",
-				FixedFee:   "0",
-				MsgFormat:  pkg.GB18030,
-				ValidTime:  "",
-				AtTime:     "",
-				//SrcTermID:       *spCode,
-				SrcTermID:       "",
+				MsgType:         pkg.MT,
+				NeedReport:      pkg.NEED_REPORT,
+				Priority:        pkg.NORMAL_PRIORITY,
+				ServiceID:       "",
+				FeeType:         "00",
+				FeeCode:         "0",
+				FixedFee:        "0",
+				MsgFormat:       pkg.GB18030,
+				ValidTime:       "",
+				AtTime:          "",
+				SrcTermID:       *spCode,
 				ChargeTermID:    "",
 				DestTermIDCount: uint8(len(destStrArr)),
 				DestTermID:      destStrArr,
@@ -77,11 +78,30 @@ func startAClient(idx int) {
 				//	pkg.TAG_PkTotal:  pkg.NewTLV(pkg.TAG_PkTotal, []byte{1}),
 				//	pkg.TAG_PkNumber: pkg.NewTLV(pkg.TAG_PkNumber, []byte{uint8(1)}),
 				//	pkg.TAG_TP_udhi:  pkg.NewTLV(pkg.TAG_TP_udhi, []byte{0}),
-				//	//pkg.TAG_TP_pid:   pkg.NewTLV(pkg.TAG_TP_pid, []byte{1}),
+				//	pkg.TAG_TP_pid:   pkg.NewTLV(pkg.TAG_TP_pid, []byte{1}),
 				//},
 			}
+			pkgs := make([]*pkg.SmgpSubmitReqPkt, 0)
 
-			_, err = c.SendReqPkt(p)
+			if len(cont) > 140 {
+				pkgs, err = pkg.GetLongMsgPkgs(p)
+				if err != nil {
+					log.Printf("client %d: get long msg pkg error: %s.", idx, err)
+					continue
+				}
+			} else {
+				p.Options = pkg.Options{
+					pkg.TAG_PkTotal:  pkg.NewTLV(pkg.TAG_PkTotal, []byte{1}),
+					pkg.TAG_PkNumber: pkg.NewTLV(pkg.TAG_PkNumber, []byte{uint8(1)}),
+					pkg.TAG_TP_udhi:  pkg.NewTLV(pkg.TAG_TP_udhi, []byte{0}),
+					pkg.TAG_TP_pid:   pkg.NewTLV(pkg.TAG_TP_pid, []byte{1}),
+				}
+				pkgs = append(pkgs, p)
+			}
+
+			for _, req := range pkgs {
+				_, err = c.SendReqPkt(req)
+			}
 			if err != nil {
 				log.Printf("client %d: send a smgp submit request error: %s.", idx, err)
 				return
@@ -89,6 +109,7 @@ func startAClient(idx int) {
 				log.Printf("client %d: send a smgp submit request ok", idx)
 			}
 			count += 1
+		default:
 		}
 
 		// recv packets
@@ -111,6 +132,7 @@ func startAClient(idx int) {
 				MsgID:  p.MsgID,
 				Status: pkg.Status(0),
 			}
+
 			err := c.SendRspPkt(rsp, p.SequenceID)
 			if err != nil {
 				log.Printf("client %d: send smgp deliver response error: %s.", idx, err)

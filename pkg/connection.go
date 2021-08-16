@@ -2,7 +2,6 @@ package pkg
 
 import (
 	"encoding/binary"
-	"fmt"
 	"io"
 	"math/rand"
 	"net"
@@ -170,21 +169,23 @@ func (c *Conn) RecvAndUnpackPkt(timeout time.Duration) (Packer, error) {
 
 	// packet body
 	var leftData = rb.leftData[0:(rb.Header.PacketLength - 12)]
-	_, err = io.ReadFull(c.Conn, leftData)
-	if err != nil {
-		netErr, ok := err.(net.Error)
-		if ok {
-			if netErr.Timeout() {
-				return nil, ErrReadPktBodyTimeout
+	if len(leftData) > 0 {
+		_, err = io.ReadFull(c.Conn, leftData)
+		if err != nil {
+			netErr, ok := err.(net.Error)
+			if ok {
+				if netErr.Timeout() {
+					return nil, ErrReadPktBodyTimeout
+				}
 			}
+			return nil, err
 		}
-		return nil, err
 	}
 
 	var p Packer
 	sequenceID := rb.Header.SequenceID
-	fmt.Println("===============")
-	fmt.Println(RequestID(rb.Header.RequestID))
+	//fmt.Println("===============")
+	//fmt.Println(RequestID(rb.Header.RequestID))
 
 	switch RequestID(rb.Header.RequestID) {
 	case SMGP_ACTIVE_TEST:
