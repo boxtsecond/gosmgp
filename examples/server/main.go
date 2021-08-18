@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	user     string = "10000001"
+	user     string = "100"
 	password string = "12345678"
 	spId     string = "123456"
 )
@@ -26,22 +26,28 @@ func handleLogin(r *server.Response, p *server.Packet, l *log.Logger) (bool, err
 	resp := r.Packer.(*pkg.SmgpLoginRespPkt)
 
 	resp.ServerVersion = pkg.VERSION
-	if req.ClientID != user {
+	if req.ClientID != string(pkg.NewOctetString(user).Byte(8)) {
 		resp.Status = pkg.Status(21)
-		l.Println("handleLogin error:", resp.Status.Error())
+		l.Println("handleLogin ClientID error:", resp.Status.Error())
 		return false, resp.Status.Error()
 	}
 
 	tm := req.TimeStamp
 	auth, err := pkg.GenAuthenticatorClient(req.ClientID, password, tm)
-
 	if err != nil || req.AuthenticatorClient != string(auth[:]) {
 		resp.Status = pkg.Status(21)
-		l.Println("handleLogin error:", resp.Status.Error())
+		l.Println("handleLogin auth GenAuthenticatorClient error:", resp.Status.Error())
 		return false, resp.Status.Error()
 	}
 
-	resp.AuthenticatorServer = string(auth[:])
+	authServer, err := pkg.GenAuthenticatorServer(resp.Status, password, string(auth[:]))
+	if err != nil {
+		resp.Status = pkg.Status(21)
+		l.Println("handleLogin GenAuthenticatorServer error:", resp.Status.Error())
+		return false, resp.Status.Error()
+	}
+
+	resp.AuthenticatorServer = string(authServer)
 	l.Printf("handleLogin: %s login ok\n", req.ClientID)
 
 	return false, nil
@@ -89,7 +95,7 @@ func handleSubmit(r *server.Response, p *server.Packet, l *log.Logger) (bool, er
 		})
 	}
 	go mockDeliver(deliverPkgs, p)
-	return true, nil
+	return false, nil
 }
 
 func mockDeliver(pkgs []*pkg.SmgpDeliverReqPkt, s *server.Packet) {

@@ -31,6 +31,7 @@ func (p *SmgpLoginReqPkt) Pack(seqId uint32) ([]byte, error) {
 	p.SequenceID = seqId
 
 	// body
+	p.ClientID = string(NewOctetString(p.ClientID).Byte(8))
 	w.WriteFixedSizeString(p.ClientID, 8)
 	if p.TimeStamp == 0 {
 		p.TimeStamp = GenTimestamp()

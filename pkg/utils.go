@@ -3,6 +3,7 @@ package pkg
 import (
 	"bytes"
 	"crypto/md5"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -44,6 +45,28 @@ func GenAuthenticatorClient(clientId, secret string, timestamp uint32) ([]byte, 
 	buf.Write([]byte{0, 0, 0, 0, 0, 0, 0})
 	buf.WriteString(secret)
 	buf.WriteString(fmt.Sprintf("%010d", timestamp))
+
+	h := md5.New()
+	_, err := h.Write(buf.Bytes())
+	if err != nil {
+		return nil, err
+	}
+
+	return h.Sum(nil), nil
+}
+
+// 生成服务端认证码
+// Login服务器端返回给客户端的认证码，当客户端认证出错时，此项为空。
+// 其值通过单向MD5 hash计算得出，表示如下：
+// AuthenticatorServer =MD5（Status+AuthenticatorClient + Shared secret）
+// Shared secret 由服务器端与客户端事先商定,最长15字节AuthenticatorClient为客户端发送给服务器端的Login中的值。参见6.2.2节。
+func GenAuthenticatorServer(status Status, secret, AuthenticatorClient string) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint32(b, uint32(status))
+	buf.Write(b)
+	buf.WriteString(AuthenticatorClient)
+	buf.WriteString(secret)
 
 	h := md5.New()
 	_, err := h.Write(buf.Bytes())
