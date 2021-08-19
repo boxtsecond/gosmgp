@@ -25,7 +25,7 @@ type SmgpDeliverMsgContent struct {
 func (p *SmgpDeliverMsgContent) Encode() string {
 	//id:!rT sub:001 dlrvd:001 submit_date:2108131621 done_date:2108131621 stat:GB:0005 err:000 txt:00000000000000000000
 	id, _ := hex.DecodeString(p.SubmitMsgID)
-	msgStatStr := fmt.Sprintf("id:%s sub:%s dlvrd:%s submit_date:%s done_date:%s stat:%s err:%s Text:%s", id, p.Sub, p.Dlvrd, p.SubmitDate, p.DoneDate, p.Stat, p.Err, p.Txt)
+	msgStatStr := fmt.Sprintf("id:%s sub:%s dlvrd:%s submit_date:%s done_date:%s stat:%s err:%s txt:%s", id, p.Sub, p.Dlvrd, p.SubmitDate, p.DoneDate, p.Stat, p.Err, p.Txt)
 
 	return msgStatStr
 }
@@ -60,12 +60,12 @@ func (p *SmgpDeliverMsgContent) String() string {
 
 type SmgpDeliverReqPkt struct {
 	MsgID      string // 短消息流水号
-	IsReport   uint8  // 短消息流水号
+	IsReport   uint8  // 是否为状态报告
 	MsgFormat  uint8  // 短消息格式
 	RecvTime   string // 短消息接收时间
 	SrcTermID  string // 短消息发送号码
 	DestTermID string // 短消息接收号码
-	MsgLength  uint8  //  短消息长度
+	MsgLength  uint8  // 短消息长度
 	MsgContent []byte // 短消息内容
 	Reserve    string // 保留
 

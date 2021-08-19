@@ -59,7 +59,7 @@ func newSequenceNumGenerator() (<-chan uint32, chan<- struct{}) {
 		for {
 			select {
 			case out <- i:
-				i = (i + 1) % 999999
+				i = (i + 1) % 1000000
 			case <-done:
 				close(out)
 				return
