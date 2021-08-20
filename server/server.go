@@ -210,6 +210,30 @@ func (c *conn) readPacket() (*Response, error) {
 		}
 		c.server.ErrorLog.Printf("receive a smgp exit response from %v[%d]\n",
 			c.Conn.RemoteAddr(), p.SequenceID)
+
+	case *pkg.SmgpQueryReqPkt:
+		rsp = &Response{
+			Packet: &Packet{
+				Packer: p,
+				Conn:   c.Conn,
+			},
+			Packer: &pkg.SmgpQueryRespPkt{
+				SequenceID: p.SequenceID,
+			},
+			SequenceID: p.SequenceID,
+		}
+		c.server.ErrorLog.Printf("receive a smgp query request from %v[%d]\n",
+			c.Conn.RemoteAddr(), p.SequenceID)
+
+	case *pkg.SmgpQueryRespPkt:
+		rsp = &Response{
+			Packet: &Packet{
+				Packer: p,
+				Conn:   c.Conn,
+			},
+		}
+		c.server.ErrorLog.Printf("receive a smgp query response from %v[%d]\n",
+			c.Conn.RemoteAddr(), p.SequenceID)
 	default:
 		return nil, pkg.NewOpError(ErrUnsupportedPkt,
 			fmt.Sprintf("readPacket: receive unsupported packet type: %#v", p))

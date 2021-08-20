@@ -53,6 +53,7 @@ func newSequenceIDGenerator() (<-chan uint32, chan<- struct{}) {
 func newSequenceNumGenerator() (<-chan uint32, chan<- struct{}) {
 	out := make(chan uint32)
 	done := make(chan struct{})
+	rand.Seed(time.Now().UnixNano())
 
 	go func() {
 		var i = uint32(rand.Intn(999999))
@@ -208,6 +209,10 @@ func (c *Conn) RecvAndUnpackPkt(timeout time.Duration) (Packer, error) {
 		p = &SmgpExitReqPkt{SequenceID: sequenceID}
 	case SMGP_EXIT_RESP:
 		p = &SmgpExitRespPkt{SequenceID: sequenceID}
+	case SMGP_QUERY:
+		p = &SmgpQueryReqPkt{SequenceID: sequenceID}
+	case SMGP_QUERY_RESP:
+		p = &SmgpQueryRespPkt{SequenceID: sequenceID}
 
 	default:
 		return nil, ErrRequestIDNotSupported
