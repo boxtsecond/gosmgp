@@ -23,9 +23,8 @@ type SmgpDeliverMsgContent struct {
 }
 
 func (p *SmgpDeliverMsgContent) Encode() string {
-	//id:!rT sub:001 dlrvd:001 submit_date:2108131621 done_date:2108131621 stat:GB:0005 err:000 txt:00000000000000000000
 	id, _ := hex.DecodeString(p.SubmitMsgID)
-	msgStatStr := fmt.Sprintf("id:%s sub:%s dlvrd:%s submit_date:%s done_date:%s stat:%s err:%s txt:%s", id, p.Sub, p.Dlvrd, p.SubmitDate, p.DoneDate, p.Stat, p.Err, p.Txt)
+	msgStatStr := fmt.Sprintf("id:%s sub:%s dlvrd:%s submit_date:%s done_date:%s stat:%s err:%s text:%s", id, p.Sub, p.Dlvrd, p.SubmitDate, p.DoneDate, p.Stat, p.Err, p.Txt)
 
 	return msgStatStr
 }
@@ -39,7 +38,7 @@ func DecodeDeliverMsgContent(data []byte) *SmgpDeliverMsgContent {
 	p.DoneDate = string(data[65:75])
 	p.Stat = string(data[81:88])
 	p.Err = string(data[93:96])
-	p.Txt = string(data[101:])
+	p.Txt = string(data[102:])
 	return p
 }
 
