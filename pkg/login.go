@@ -30,16 +30,16 @@ func (p *SmgpLoginReqPkt) Pack(seqId uint32) ([]byte, error) {
 	w.WriteHeader(SmgpLoginReqPktLen, seqId, SMGP_LOGIN)
 	p.SequenceID = seqId
 
+	auth, err := GenAuthenticatorClient(p.ClientID, p.Secret, p.TimeStamp)
+	if err != nil {
+		return nil, err
+	}
+
 	// body
 	p.ClientID = string(NewOctetString(p.ClientID).Byte(8))
 	w.WriteFixedSizeString(p.ClientID, 8)
 	if p.TimeStamp == 0 {
 		p.TimeStamp = GenTimestamp()
-	}
-
-	auth, err := GenAuthenticatorClient(p.ClientID, p.Secret, p.TimeStamp)
-	if err != nil {
-		return nil, err
 	}
 	p.AuthenticatorClient = string(auth[:])
 	w.WriteBytes(auth)
