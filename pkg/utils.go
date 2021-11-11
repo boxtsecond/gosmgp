@@ -221,7 +221,7 @@ func GetLongMsgPkgs(pkg *SmgpSubmitReqPkt) ([]*SmgpSubmitReqPkt, error) {
 			Options: Options{
 				TAG_PkTotal:  NewTLV(TAG_PkTotal, []byte{uint8(len(chunks))}),
 				TAG_PkNumber: NewTLV(TAG_PkNumber, []byte{uint8(i + 1)}),
-				TAG_TP_pid:   NewTLV(TAG_TP_udhi, []byte{0}),
+				TAG_TP_pid:   NewTLV(TAG_TP_pid, []byte{0}),
 				TAG_TP_udhi:  NewTLV(TAG_TP_udhi, []byte{tpUdhi}),
 			},
 		}
