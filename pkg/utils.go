@@ -191,9 +191,14 @@ func SplitLongSms(content string) [][]byte {
 	return chunks
 }
 
-func GetLongMsgPkgs(pkg *SmgpSubmitReqPkt) ([]*SmgpSubmitReqPkt, error) {
+func GetMsgPkgs(pkg *SmgpSubmitReqPkt) ([]*SmgpSubmitReqPkt, error) {
 	packets := make([]*SmgpSubmitReqPkt, 0)
-	chunks := SplitLongSms(pkg.MsgContent)
+	content, err := Utf8ToUcs2(pkg.MsgContent)
+	if err != nil {
+		return packets, err
+	}
+
+	chunks := SplitLongSms(content)
 	var tpUdhi uint8
 	if len(chunks) > 1 {
 		tpUdhi = 1
@@ -208,7 +213,7 @@ func GetLongMsgPkgs(pkg *SmgpSubmitReqPkt) ([]*SmgpSubmitReqPkt, error) {
 			FeeType:         pkg.FeeType,
 			FeeCode:         pkg.FeeCode,
 			FixedFee:        pkg.FixedFee,
-			MsgFormat:       pkg.MsgFormat,
+			MsgFormat:       UCS2, // 长短信必须使用 UCS2 格式
 			ValidTime:       pkg.ValidTime,
 			AtTime:          pkg.AtTime,
 			SrcTermID:       pkg.SrcTermID,
@@ -219,10 +224,10 @@ func GetLongMsgPkgs(pkg *SmgpSubmitReqPkt) ([]*SmgpSubmitReqPkt, error) {
 			MsgContent:      string(chunk),
 			Reserve:         pkg.Reserve,
 			Options: Options{
-				TAG_PkTotal:  NewTLV(TAG_PkTotal, []byte{uint8(len(chunks))}),
-				TAG_PkNumber: NewTLV(TAG_PkNumber, []byte{uint8(i + 1)}),
 				TAG_TP_pid:   NewTLV(TAG_TP_pid, []byte{0}),
 				TAG_TP_udhi:  NewTLV(TAG_TP_udhi, []byte{tpUdhi}),
+				TAG_PkTotal:  NewTLV(TAG_PkTotal, []byte{uint8(len(chunks))}),
+				TAG_PkNumber: NewTLV(TAG_PkNumber, []byte{uint8(i + 1)}),
 			},
 		}
 		packets = append(packets, p)
