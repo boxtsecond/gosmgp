@@ -118,7 +118,10 @@ func (p *SmgpDeliverReqPkt) Unpack(data []byte) error {
 	s := make([]byte, p.MsgLength)
 	r.ReadBytes(s)
 	p.MsgContent = s
-	p.MsgStatContent = DecodeDeliverMsgContent(p.MsgContent)
+	// 状态报告
+	if p.IsReport == 1 {
+		p.MsgStatContent = DecodeDeliverMsgContent(p.MsgContent)
+	}
 
 	p.Reserve = string(r.ReadCString(8))
 	offset += 10 + 1 + 1 + 14 + 21 + 21 + 1 + int(p.MsgLength) + 8
@@ -142,7 +145,11 @@ func (p *SmgpDeliverReqPkt) String() string {
 	fmt.Fprintln(&b, "SrcTermID: ", p.SrcTermID)
 	fmt.Fprintln(&b, "DestTermID: ", p.DestTermID)
 	fmt.Fprintln(&b, "MsgLength: ", p.MsgLength)
-	fmt.Fprintln(&b, "MsgContent: ", p.MsgStatContent.String())
+	if p.IsReport == 1 {
+		fmt.Fprintln(&b, "MsgContent: ", p.MsgStatContent.String())
+	} else {
+		fmt.Fprintln(&b, "MsgContent: ", string(p.MsgContent))
+	}
 	fmt.Fprintln(&b, "Options: ", p.Options.String())
 
 	return b.String()
